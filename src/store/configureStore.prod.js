@@ -1,24 +1,40 @@
 import { createStore, applyMiddleware, compose } from 'redux';
-import thunk from 'redux-thunk';
-import { persistState } from 'redux-devtools';
-import { routerMiddleware } from 'react-router-redux';
-import { browserHistory } from 'react-router';
-
+import thunkMiddleware from 'redux-thunk';
+import { persistStore, persistReducer } from "redux-persist";
+import { multiClientMiddleware } from "redux-axios-middleware";
 import rootReducer from '../reducers';
-
-const reduxRouterMiddleware = routerMiddleware(browserHistory);
-const middleware = [
-  reduxRouterMiddleware,
-  thunk
-].filter(Boolean);
-
-
-function configureStore(initialState) {
-  const store = createStore(rootReducer, initialState, compose(
-    applyMiddleware(...middleware),
-  ));
-
-  return store;
+import clients from "./clients";
+import storage from "redux-persist/lib/storage";
+import { composeWithDevTools } from "redux-devtools-extension";
+const middlewareConfig = {
+  interceptors: {
+    request: [{
+      success: function ({ getState, dispatch, getSourceAction }, req) {
+        var token = getState().auth.userToken;
+        req.headers.Authorization = `Bearer ${token}`
+        return req;
+      },
+      error: function ({ getState, dispatch, getSourceAction }, error) {
+        return error
+      }
+    }]
+  }
 }
 
-export default configureStore;
+const persistConfig = {
+  key: "root",
+  blacklist: [],
+  whitelist: ["auth"],
+  keyPrefix: 'EventManagement',
+  storage: storage
+};
+const middlewares = [
+  thunkMiddleware,
+  multiClientMiddleware(clients, middlewareConfig),
+];
+const persistedReducer = persistReducer(persistConfig, rootReducer);
+export default () => {
+  let store = createStore(persistedReducer, composeWithDevTools(applyMiddleware(...middlewares)));
+  let persistor = persistStore(store);
+  return { store, persistor };
+};
