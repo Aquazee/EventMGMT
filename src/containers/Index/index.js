@@ -3,6 +3,8 @@ import { connect } from 'react-redux';
 import { createEvent } from "../../actions/dashboard";
 import "./Index.css";
 import { IsLetters, IsNumber } from "../../utils/validators";
+import InputItem from "../../components/InputItem/InputItem";
+import EventItem from "../../components/EventItem/EventItem";
 
 const labels = ['Name', 'Description', 'Venue', 'Price', 'Discount'];
 const vals = { 'Name': '', 'Description': '', 'Venue': '', 'Price': '', 'Discount': '' }
@@ -21,7 +23,8 @@ class Home extends Component {
             data: [...vals],
             error: {},
             tform: false,
-            selected: 'All'
+            selected: 'All',
+            selectedsort : 'Price'
         };
     }
 
@@ -67,7 +70,7 @@ class Home extends Component {
             case 'Discount':
                 if (!IsNumber.test(value.trim())) {
                     return 'Discount should only contain numbers.'
-                }else if(parseInt(this.state.Price) === 0 && parseInt(value.trim()) > parseInt(this.state.Price)){
+                } else if (parseInt(this.state.Price) === 0 && parseInt(value.trim()) > parseInt(this.state.Price)) {
                     return 'Discount cannot be more then price.'
                 }
                 break;
@@ -99,7 +102,7 @@ class Home extends Component {
     }
 
     clearForm() {
-        this.setState({ 'Name': '', 'Description': '', 'Venue': '', 'Price': '', 'Discount': '' },()=>{
+        this.setState({ 'Name': '', 'Description': '', 'Venue': '', 'Price': '', 'Discount': '' }, () => {
             console.log(this.state)
         })
     }
@@ -109,8 +112,29 @@ class Home extends Component {
         this.setState({ selected: e.target.value })
     }
 
-    render() {
+    setSortOrder(e) {
+        console.log('selected ' + e.target.value)
+        this.setState({ selectedsort: e.target.value })
+    }
+
+    changeEventList() {
+        const { selected, selectedsort } = this.state;
         const { eventlist } = this.props;
+        return eventlist.filter((i, index) => {
+            if (selected === 'All') {
+                return i
+            } else if (selected === 'Discount' && parseInt(i.Discount) > parseInt(0)) {
+                return i
+            } else if (selected === 'No Discount' && parseInt(i.Discount) === 0) {
+                return i
+            } else if (selected === 'Free' && parseInt(i.Price) === 0) {
+                return i
+            }
+        }).sort((a, b) => a[selectedsort] - b[selectedsort])
+    }
+
+    render() {
+        let eventlist = this.changeEventList()
         let options = ['All', 'Free', 'Discount', 'No Discount']
         return (
             <div className="row cont">
@@ -130,9 +154,16 @@ class Home extends Component {
                                 <option value={'Discount'} >Discount</option>
                                 <option value={'No Discount'} >No Discount</option>
                             </select> : null}
+                            {!this.state.tform ? <select
+                                onChange={(e) => this.setSortOrder(e)}
+                                value={this.state.selectedsort}
+                                className={"form-control seloption"}
+                                id="exampleFormControlSelect1">
+                                <option value={'Price'}>Price</option>
+                                <option value={'Discount'} >Discount</option>
+                            </select> : null}
                             <button onClick={this.toggleForm.bind(this)} type="submit" className="btn btn-primary pull-right">{this.state.tform ? 'cancel' : 'Add'}</button>
                         </div>
-
                     </div>
                     <div id="AddEvent" className={this.state.tform ? 'd-block' : 'd-none'}>
                         <form id={'myForm'} autoComplete="off" onSubmit={this.submitEvent.bind(this)}>
@@ -176,21 +207,6 @@ class Home extends Component {
                                 label={'Discount'}
                                 error={this.state.error['Discount']}
                                 index={5} />
-
-                            {/* <div className="form-group">
-                                <label htmlFor="eventVenue">Venue</label>
-                                <input type="text" className="form-control" id="eventVenue" placeholder="" />
-                            </div>
-                            <div className="row">
-                                <div className="col-6 form-group">
-                                    <label htmlFor="eventPrice">Price</label>
-                                    <input type="text" className="form-control" id="eventVenue" placeholder="" />
-                                </div>
-                                <div className="col-6 form-group">
-                                    <label htmlFor="eventDiscount">Discount</label>
-                                    <input type="text" className="form-control" id="eventDiscount" placeholder="" />
-                                </div>
-                            </div> */}
                             <div>
                                 <button type="submit" className="btn btn-primary mr-2">Submit</button>
                                 <button type="reset" className="btn btn-primary" onClick={() => this.clearForm()}>Clear</button>
@@ -203,15 +219,8 @@ class Home extends Component {
                             //     return <EventItem {...i} key={'list' + index} />
                             // }) : <span className="notfound">No Events Found</span>
                             eventlist.length > 0 ? eventlist.map((i, index) => {
-                                if (this.state.selected === 'All') {
-                                    return <EventItem {...i} key={'list' + index} />
-                                } else if (this.state.selected === 'Discount' && parseInt(i.Discount) > parseInt(0)) {
-                                    return <EventItem {...i} key={'list' + index} />
-                                } else if (this.state.selected === 'No Discount' && parseInt(i.Discount) === 0) {
-                                    return <EventItem {...i} key={'list' + index} />
-                                } else if (this.state.selected === 'Free' && parseInt(i.Price) === 0) {
-                                    return <EventItem {...i} key={'list' + index} />
-                                }
+                                return <EventItem {...i} key={'list' + index} />
+
                             }) : <span className="notfound">No Events Found</span>
                         }
                     </div>
@@ -234,25 +243,3 @@ export default connect(
     mapStateToProps,
     mapDispatchToProps
 )(Home);
-
-const InputItem = ({ label, value, error, type, index, onChange }) => {
-    let lbl = 'event' + label;
-    return <div className="form-group">
-        <label htmlFor={lbl}>{label} <span className="red">*</span></label>
-        <input type={type} name={label} className="form-control" id={lbl} value={value} tabIndex={index} onChange={onChange} />
-        {error && <span className="error">{error}</span>}
-    </div>
-}
-
-const EventItem = ({ Name, Description, Venue, Price, Discount }) => {
-    return <div className="card event">
-        <div className="event-name">{Name.toTitleCase()}</div>
-        <div className="event-desc">{Description.toTitleCase()}</div>
-        <div className="ct-items">
-            <span className="event-item"><i className="fas fa-map-marker"></i>{Venue}</span>
-            <span className="event-item"><i className="fas fa-currency"></i>{Price}</span>
-            <span className="event-item"><i className="fas fa-location"></i>{Discount}</span>
-        </div>
-    </div>
-}
-
