@@ -28,10 +28,12 @@ const persistConfig = {
   keyPrefix: 'EventManagement',
   storage: storage
 };
+
 const middlewares = [
   thunkMiddleware,
   multiClientMiddleware(clients, middlewareConfig),
 ];
+
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 export default () => {
   let store = createStore(persistedReducer, composeWithDevTools(applyMiddleware(...middlewares)));
